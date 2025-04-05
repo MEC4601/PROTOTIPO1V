@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>PROTOTIPO</title>
+  
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="es" class="transition-colors duration-300">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartMec360 Dashboard</title>
+
+  <!-- Tailwind y Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Script de lógica general y toggleTheme (se agrega abajo) -->
+  <script src="main.js" defer></script>
+
+  <style>
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in { animation: fade-in 0.8s ease-out forwards; }
+
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fade-in-up 0.8s ease-out forwards; }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .animate-slide-in { animation: slide-in 0.7s ease-out forwards; }
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+  </style>
+</head>
+
+<body class="bg-gray-100 font-sans transition-colors duration-300 dark:bg-gray-900 dark:text-white">
+  <header class="bg-blue-800 text-white p-4 text-center text-2xl font-bold shadow animate-fade-in">
+    SmartMec360 - Monitoreo Industrial
+  </header>
+
+  <main class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+    <div id="alerta" class="col-span-3 bg-red-500 text-white p-4 rounded-xl text-center font-semibold hidden animate-pulse"></div>
+
+    <!-- Tarjetas de datos -->
+    <div class="col-span-3 grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow animate-fade-in-up">
+        <h3 class="text-lg font-semibold mb-2">🌡️ Temperatura</h3>
+        <p id="temp-val" class="text-2xl font-bold text-red-600">-- °C</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow animate-fade-in-up delay-100">
+        <h3 class="text-lg font-semibold mb-2">📈 Vibración</h3>
+        <p id="vib-val" class="text-2xl font-bold text-yellow-600">-- mm/s</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow animate-fade-in-up delay-200">
+        <h3 class="text-lg font-semibold mb-2">⚡ Energía</h3>
+        <p id="ene-val" class="text-2xl font-bold text-green-600">-- kWh</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow animate-fade-in-up delay-300">
+        <h3 class="text-lg font-semibold mb-2">⏱️ Horas de Operación</h3>
+        <p id="horas-val" class="text-2xl font-bold text-blue-600">-- h</p>
+      </div>
+    </div>
+
+    <!-- Gráficas -->
+    <div class="col-span-3 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 animate-fade-in-up mt-4">
+      <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">📊 Gráficas en Tiempo Real</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <canvas id="tempChart" class="w-full h-40"></canvas>
+        <canvas id="vibChart" class="w-full h-40"></canvas>
+        <canvas id="eneChart" class="w-full h-40"></canvas>
+      </div>
+    </div>
+
+    <!-- IA y Agenda -->
+    <div class="col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+        <h3 class="text-lg font-bold mb-2">🧠 Diagnóstico IA</h3>
+        <p>Recomendación IA: programar mantenimiento preventivo en Motor Principal antes del viernes para evitar posibles fallas.</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+        <h3 class="text-lg font-bold mb-2">📅 Agenda de Mantenimiento</h3>
+        <ul class="list-disc pl-6">
+          <li>2025-04-06 - Revisión Sensor Térmico</li>
+          <li>2025-04-10 - Lubricación General</li>
+          <li>2025-04-15 - Auditoría Energética</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Registro y botón de modo -->
+    <div class="col-span-3 mt-6">
+      <h3 class="text-lg font-bold mb-2">🛠️ Registro de Mantenimientos Interactivo</h3>
+      <div class="flex gap-2 mb-2">
+        <button class="bg-blue-500 text-white px-4 py-1 rounded">Filtrar por Equipo</button>
+        <button class="bg-blue-500 text-white px-4 py-1 rounded">Filtrar por Fecha</button>
+        <button id="modoBtn" onclick="toggleTheme()" class="ml-auto bg-gray-700 text-white px-4 py-1 rounded">🌙 Modo Oscuro</button>
+      </div>
+      <table class="w-full text-sm bg-white dark:bg-gray-800 rounded shadow">
+        <thead>
+          <tr>
+            <th class="p-2 text-left">Fecha</th>
+            <th class="p-2 text-left">Equipo</th>
+            <th class="p-2 text-left">Falla</th>
+            <th class="p-2 text-left">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="p-2">2025-03-30</td><td>Motor Principal</td><td>Sobrecalentamiento</td><td>Cambio de termostato</td></tr>
+          <tr><td class="p-2">2025-03-15</td><td>Compresor 1</td><td>Alta vibración</td><td>Lubricación y ajuste</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Blockchain -->
+    <div class="col-span-3 mt-6">
+      <h3 class="text-lg font-bold mb-2">📦 Trazabilidad Blockchain</h3>
+      <ul class="list-disc pl-6 bg-white dark:bg-gray-800 p-4 rounded shadow">
+        <li>🔒 [2025-04-01 14:32] Registro de mantenimiento guardado (Motor Principal)</li>
+        <li>🔒 [2025-03-30 09:45] Sensor de temperatura activó alerta</li>
+        <li>🔒 [2025-03-15 16:10] Lubricación realizada y confirmada</li>
+      </ul>
+    </div>
+
+    <!-- Acciones -->
+    <div class="col-span-3 flex flex-wrap justify-center gap-4 mt-6">
+      <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl">🟢 Iniciar maquinaria</button>
+      <button class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-xl">🔁 Reiniciar sistema</button>
+      <button class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl">🔴 Apagar maquinaria</button>
+    </div>
+  </main>
+
+  <footer class="text-center text-sm text-gray-500 py-4 animate-fade-in">
+    © 2025 SmartMec360 | GlobaMec Solutions
+  </footer>
+</body>
+</html>
+<!-- partial -->
+  <script  src="./script.js"></script>
+
+</body>
+</html>
