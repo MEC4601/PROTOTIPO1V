@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tanque 2 Demo Visual</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root,[data-theme="light"]{--bg:#f7f6f2;--surface:#fbfbf9;--surface-2:#f3f0ec;--text:#28251d;--muted:#706e68;--primary:#01696f;--primary-2:#6fd2db;--blue:#006494;--success:#437a22;--border:rgba(40,37,29,.10);--shadow:0 12px 32px rgba(20,20,20,.08);--r:24px;--font:'Satoshi',Inter,sans-serif}
+    [data-theme="dark"]{--bg:#171614;--surface:#1c1b19;--surface-2:#242321;--text:#cdccca;--muted:#9d9a96;--primary:#4f98a3;--primary-2:#8de7ef;--blue:#6aaed8;--success:#6daa45;--border:rgba(255,255,255,.08);--shadow:0 20px 40px rgba(0,0,0,.28)}
+    *{box-sizing:border-box;margin:0;padding:0} html,body{min-height:100%;background:radial-gradient(circle at top right, rgba(79,152,163,.10), transparent 28%),var(--bg);color:var(--text);font-family:var(--font)}
+    body{padding:24px} button,input{font:inherit}
+    .app{max-width:1280px;margin:0 auto;display:grid;gap:24px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+    .title h1{font-size:clamp(2rem,1.3rem + 2vw,3.4rem);line-height:1}.title p{margin-top:10px;color:var(--muted);max-width:60ch}
+    .theme{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:16px;padding:12px 16px;cursor:pointer}
+    .grid{display:grid;grid-template-columns:340px 1fr 420px;gap:24px}
+    .card{background:linear-gradient(180deg,var(--surface),var(--surface-2));border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+    .pad{padding:24px}.label{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}.big{font-size:2.2rem;font-weight:900}
+    .controls{display:grid;gap:18px}.field{display:grid;gap:10px}.field label{font-weight:700}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.hint{color:var(--muted);font-size:.95rem}
+    input[type="range"]{width:100%}.btn{border:none;border-radius:16px;padding:14px 18px;font-weight:800;cursor:pointer}.btn-primary{background:var(--primary);color:white}.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:14px}.metric{padding:16px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--border)}.metric small{display:block;color:var(--muted);margin-bottom:6px}.metric strong{font-size:1.5rem}
+    .chart-wrap{height:380px}.tank-wrap{display:grid;gap:16px;align-content:start}.status{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:rgba(79,152,163,.12);color:var(--primary);font-weight:800}.dot{width:10px;height:10px;border-radius:50%;background:currentColor;box-shadow:0 0 0 6px rgba(79,152,163,.15)}
+    .footer-note{padding:16px 18px;border-radius:18px;background:rgba(79,152,163,.08);color:var(--muted);font-size:.96rem}
+    @media (max-width:1100px){.grid{grid-template-columns:1fr}.chart-wrap{height:320px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="title">
+        <h1>Demo visual del tanque 2</h1>
+        <p>Esta versión es solo para ver cómo se ve la animación del llenado, la gráfica y el estilo de la interfaz, sin necesidad de MQTT ni sensor real.</p>
+      </div>
+      <button class="theme" id="themeBtn">Cambiar tema</button>
+    </div>
+
+    <div class="grid">
+      <section class="card pad controls">
+        <div>
+          <div class="label">Prueba de setpoint</div>
+          <div class="big" id="setpointBig">6.0 cm</div>
+          <div class="hint">Rango disponible 0 a 12 cm</div>
+        </div>
+        <div class="field">
+          <label for="sp">Altura deseada</label>
+          <input id="sp" type="range" min="0" max="12" step="0.1" value="6.0" />
+          <div class="row"><span>0 cm</span><strong id="spLabel">6.0 cm</strong><span>12 cm</span></div>
+        </div>
+        <div class="field">
+          <label for="speed">Velocidad de respuesta visual</label>
+          <input id="speed" type="range" min="0.01" max="0.08" step="0.005" value="0.035" />
+          <div class="hint">Más alto = llega más rápido, pero ahora la respuesta incluye inercia y tarda un poco en estabilizarse.</div>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" id="playBtn">Iniciar demo</button>
+          <button class="btn btn-secondary" id="resetBtn">Reiniciar</button>
+        </div>
+        <div class="metrics">
+          <div class="metric"><small>Nivel medido</small><strong id="levelBox">0.0 cm</strong></div>
+          <div class="metric"><small>Error</small><strong id="errorBox">6.0 cm</strong></div>
+          <div class="metric"><small>Referencia</small><strong id="refBox">6.0 cm</strong></div>
+          <div class="metric"><small>Estado</small><strong id="stateBox">Demo</strong></div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <div class="label">Gráfica de prueba</div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      </section>
+
+      <section class="card pad tank-wrap">
+        <div class="status"><span class="dot"></span> Animación activa</div>
+        <svg viewBox="0 0 300 400" aria-label="Tanque animado con agua">
+          <defs>
+            <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#8de7ef" />
+              <stop offset="100%" stop-color="#01696f" />
+            </linearGradient>
+            <clipPath id="clipTank">
+              <rect x="65" y="42" width="170" height="285" rx="30" ry="30"></rect>
+            </clipPath>
+          </defs>
+          <rect x="65" y="42" width="170" height="285" rx="30" ry="30" fill="none" stroke="currentColor" stroke-width="6"></rect>
+          <rect x="95" y="18" width="110" height="30" rx="12" fill="none" stroke="currentColor" stroke-width="5" opacity=".78"></rect>
+          <g clip-path="url(#clipTank)">
+            <rect id="waterBody" x="65" y="327" width="170" height="0" fill="url(#waterGradient)" opacity=".93"></rect>
+            <path id="wave" d="M65 327 Q85 319 105 327 T145 327 T185 327 T235 327 L235 340 L65 340 Z" fill="#b9f7fb" opacity=".9"></path>
+          </g>
+          <g opacity=".2">
+            <path d="M252 72c0 20-12 36-12 56s12 36 12 56" stroke="currentColor" stroke-width="6" stroke-linecap="round"></path>
+          </g>
+          <text x="150" y="190" text-anchor="middle" font-size="38" font-weight="900" id="levelText" fill="currentColor">0.0 cm</text>
+          <text x="150" y="360" text-anchor="middle" font-size="18" fill="currentColor">Tanque 2 · 0–12 cm</text>
+        </svg>
+        <div class="footer-note">Mueve el setpoint y presiona iniciar. El nivel medido simulado se irá acercando poco a poco y la onda superior cambiará para dar sensación de agua real.</div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const MAX = 12;
+    const state = {setpoint:6, level:0, velocity:0, running:true, speed:0.035, tick:0, phase:0, theme:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'};
+    const $ = id => document.getElementById(id);
+    const sp = $('sp'), speed = $('speed'), spLabel = $('spLabel'), setpointBig = $('setpointBig'), levelBox = $('levelBox'), errorBox = $('errorBox'), refBox = $('refBox'), stateBox = $('stateBox');
+    const waterBody = $('waterBody'), wave = $('wave'), levelText = $('levelText'), playBtn = $('playBtn'), resetBtn = $('resetBtn'), themeBtn = $('themeBtn');
+    document.documentElement.setAttribute('data-theme', state.theme);
+
+    const chart = new Chart($('chart'), {
+      type:'line',
+      data:{datasets:[
+        {label:'Referencia',data:[],borderColor:'#01696f',pointRadius:0,borderWidth:3,tension:0.25},
+        {label:'Nivel medido',data:[],borderColor:'#006494',pointRadius:0,borderWidth:3,tension:0.28}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:getComputedStyle(document.body).color}}},scales:{x:{type:'linear',min:0,max:79,ticks:{color:getComputedStyle(document.body).color},grid:{color:'rgba(127,127,127,.12)'}},y:{min:0,max:12,ticks:{color:getComputedStyle(document.body).color,callback:v=>v+' cm'},grid:{color:'rgba(127,127,127,.12)'}}}}
+    });
+
+    function clamp(v){return Math.max(0,Math.min(MAX,Number(v)||0));}
+    function sync(){
+      state.setpoint = clamp(sp.value);
+      state.speed = Number(speed.value);
+      spLabel.textContent = state.setpoint.toFixed(1)+' cm';
+      setpointBig.textContent = state.setpoint.toFixed(1)+' cm';
+      refBox.textContent = state.setpoint.toFixed(1)+' cm';
+      levelBox.textContent = state.level.toFixed(1)+' cm';
+      errorBox.textContent = (state.setpoint-state.level).toFixed(1)+' cm';
+      levelText.textContent = state.level.toFixed(1)+' cm';
+    }
+    function drawTank(){
+      const pct = state.level / MAX;
+      const top = 42, h = 285;
+      const y = top + h - pct*h;
+      const bodyH = pct*h;
+      waterBody.setAttribute('y', y.toFixed(2));
+      waterBody.setAttribute('height', bodyH.toFixed(2));
+      state.phase += 0.35;
+      const left = 65, right = 235, width = right-left, amp = 5;
+      let d = `M ${left} ${y.toFixed(2)} `;
+      for(let i=0;i<6;i++){
+        const x1 = left + width/6*i;
+        const x2 = left + width/6*(i+1);
+        const cx = (x1+x2)/2;
+        const cy = y + Math.sin(state.phase+i)*amp;
+        d += `Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${x2.toFixed(2)} ${y.toFixed(2)} `;
+      }
+      d += `L ${right} 340 L ${left} 340 Z`;
+      wave.setAttribute('d', d);
+    }
+    function pushChart(){
+      const a = chart.data.datasets[0].data, b = chart.data.datasets[1].data;
+      a.push({x:a.length? a[a.length-1].x+1:0, y:state.setpoint});
+      b.push({x:b.length? b[b.length-1].x+1:0, y:state.level});
+      [a,b].forEach(arr=>{if(arr.length>80)arr.shift();arr.forEach((p,i)=>p.x=i)});
+      chart.update('none');
+    }
+    function update(){
+      if(state.running){
+        const diff = state.setpoint - state.level;
+        const damping = 0.94;
+        const stiffness = state.speed * 0.032;
+        const noise = (Math.random()-0.5)*0.008;
+        state.velocity = (state.velocity + diff * stiffness) * damping;
+        state.level = clamp(state.level + state.velocity + noise);
+        if (Math.abs(diff) < 0.03 && Math.abs(state.velocity) < 0.01) state.velocity = 0;
+        state.tick++;
+        if(state.tick % 5 === 0) pushChart();
+      }
+      sync();
+      drawTank();
+      requestAnimationFrame(update);
+    }
+    sp.addEventListener('input', sync);
+    speed.addEventListener('input', sync);
+    playBtn.addEventListener('click', ()=>{state.running=!state.running; playBtn.textContent=state.running?'Pausar demo':'Iniciar demo'; stateBox.textContent=state.running?'Demo':'Pausada';});
+    resetBtn.addEventListener('click', ()=>{state.level=0; state.velocity=0; chart.data.datasets.forEach(d=>d.data=[]); sync(); drawTank(); stateBox.textContent='Reiniciada';});
+    themeBtn.addEventListener('click', ()=>{state.theme=state.theme==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',state.theme);});
+    sync(); drawTank(); update();
+  </script>
+</body>
+</html>
