@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>INTERFAZ CONTROL IOT</title>
+  <title>INTERFAZ CONTROL IOT MQTT</title>
   <link rel="preconnect" href="https://api.fontshare.com" />
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
-    :root,[data-theme="light"]{--bg:#f7f6f2;--surface:#fbfbf9;--surface-2:#f3f0ec;--text:#28251d;--muted:#706e68;--primary:#01696f;--primary-2:#6fd2db;--blue:#006494;--success:#437a22;--warning:#964219;--border:rgba(40,37,29,.10);--shadow:0 12px 32px rgba(20,20,20,.08);--r:24px;--font:'Satoshi',Inter,sans-serif}
-    [data-theme="dark"]{--bg:#171614;--surface:#1c1b19;--surface-2:#242321;--text:#cdccca;--muted:#9d9a96;--primary:#4f98a3;--primary-2:#8de7ef;--blue:#6aaed8;--success:#6daa45;--warning:#f0a15f;--border:rgba(255,255,255,.08);--shadow:0 20px 40px rgba(0,0,0,.28)}
+    :root,[data-theme="light"]{--bg:#f7f6f2;--surface:#fbfbf9;--surface-2:#f3f0ec;--text:#28251d;--muted:#706e68;--primary:#01696f;--primary-2:#6fd2db;--blue:#006494;--success:#437a22;--warning:#964219;--danger:#a12c7b;--border:rgba(40,37,29,.10);--shadow:0 12px 32px rgba(20,20,20,.08);--r:24px;--font:'Satoshi',Inter,sans-serif}
+    [data-theme="dark"]{--bg:#171614;--surface:#1c1b19;--surface-2:#242321;--text:#cdccca;--muted:#9d9a96;--primary:#4f98a3;--primary-2:#8de7ef;--blue:#6aaed8;--success:#6daa45;--warning:#f0a15f;--danger:#d163a7;--border:rgba(255,255,255,.08);--shadow:0 20px 40px rgba(0,0,0,.28)}
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{min-height:100%;background:radial-gradient(circle at top right, rgba(79,152,163,.10), transparent 28%),var(--bg);color:var(--text);font-family:var(--font)}
     body{padding:24px}
@@ -17,34 +18,53 @@
     .app{max-width:1440px;margin:0 auto;display:grid;gap:24px}
     .top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
     .title h1{font-size:clamp(2rem,1.3rem + 2vw,3.4rem);line-height:1}
-    .title p{margin-top:10px;color:var(--muted);max-width:60ch}
+    .title p{margin-top:10px;color:var(--muted);max-width:72ch}
     .theme{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:16px;padding:12px 16px;cursor:pointer}
-    .grid{display:grid;grid-template-columns:340px 1fr 420px;gap:24px;align-items:start}
+    .grid{display:grid;grid-template-columns:360px minmax(0,1fr) 320px;gap:24px;align-items:start}
     .center-col{display:grid;gap:24px}
     .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
     .card{background:linear-gradient(180deg,var(--surface),var(--surface-2));border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
-    .pad{padding:24px}.label{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}.big{font-size:2.2rem;font-weight:900}
-    .controls{display:grid;gap:18px}.field{display:grid;gap:10px}.field label{font-weight:700}.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.hint{color:var(--muted);font-size:.95rem}
-    input[type="range"]{width:100%}.btn{border:none;border-radius:16px;padding:14px 18px;font-weight:800;cursor:pointer}.btn-primary{background:var(--primary);color:white}.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
-    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:14px}.metric{padding:16px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--border)}.metric small{display:block;color:var(--muted);margin-bottom:6px}.metric strong{font-size:1.5rem}
+    .pad{padding:24px}
+    .label{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+    .big{font-size:2.2rem;font-weight:900}
+    .controls{display:grid;gap:18px}
+    .field{display:grid;gap:10px}
+    .field label{font-weight:700}
+    .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .hint{color:var(--muted);font-size:.92rem}
+    input[type="range"],input[type="text"],input[type="password"]{width:100%}
+    input[type="text"],input[type="password"]{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:14px;padding:12px 14px}
+    .btn{border:none;border-radius:16px;padding:14px 18px;font-weight:800;cursor:pointer}
+    .btn-primary{background:var(--primary);color:white}
+    .btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .metric{padding:16px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--border)}
+    .metric small{display:block;color:var(--muted);margin-bottom:6px}
+    .metric strong{font-size:1.35rem}
     .chart-wrap{height:360px}.chart-wrap.small{height:240px}
-    .tank-wrap{display:grid;gap:16px;align-content:start}.status{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:rgba(79,152,163,.12);color:var(--primary);font-weight:800}.dot{width:10px;height:10px;border-radius:50%;background:currentColor;box-shadow:0 0 0 6px rgba(79,152,163,.15)}
-    .footer-note{padding:16px 18px;border-radius:18px;background:rgba(79,152,163,.08);color:var(--muted);font-size:.96rem}
-    .mode-group{display:grid;gap:10px}
+    .tank-wrap{display:grid;gap:14px;align-content:start;position:sticky;top:24px}
+    .status{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:rgba(79,152,163,.12);color:var(--primary);font-weight:800}
+    .dot{width:10px;height:10px;border-radius:50%;background:currentColor;box-shadow:0 0 0 6px rgba(79,152,163,.15)}
+    .mode-group,.mqtt-group{display:grid;gap:10px}
     .segmented{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .seg-btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:16px;padding:14px 16px;font-weight:800;cursor:pointer;transition:.2s ease}
     .seg-btn.active{background:var(--primary);color:#fff;border-color:transparent;box-shadow:0 8px 18px rgba(1,105,111,.22)}
     .mini-note{font-size:.9rem;color:var(--muted)}
-    @media (max-width:1280px){.grid{grid-template-columns:320px 1fr}.tank-wrap{grid-column:1/-1}.charts-grid{grid-template-columns:1fr 1fr}}
-    @media (max-width:1100px){.grid{grid-template-columns:1fr}.charts-grid{grid-template-columns:1fr}.chart-wrap{height:320px}.chart-wrap.small{height:220px}}
+    .conn-state{padding:12px 14px;border-radius:14px;font-weight:800}
+    .conn-off{background:rgba(150,66,25,.12);color:var(--warning)}
+    .conn-on{background:rgba(67,122,34,.12);color:var(--success)}
+    .conn-err{background:rgba(161,44,123,.12);color:var(--danger)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86rem;word-break:break-all}
+    @media (max-width:1280px){.grid{grid-template-columns:340px minmax(0,1fr) 280px}.charts-grid{grid-template-columns:1fr 1fr}.tank-wrap{position:static}}
+    @media (max-width:1100px){.grid{grid-template-columns:1fr}.charts-grid{grid-template-columns:1fr}.chart-wrap{height:320px}.chart-wrap.small{height:220px}.tank-wrap{position:static}}
   </style>
 </head>
 <body>
   <div class="app">
     <div class="top">
       <div class="title">
-        <h1>Demo visual</h1>
-        <p>Interfaz de prueba para nivel, error y señal de control. Ya queda lista para luego enlazarla con MQTT.</p>
+        <h1>Interfaz MQTT</h1>
+        <p>Panel web para controlar referencia, cambiar entre modos CD y DD y visualizar nivel, error <strong>ek</strong> y control <strong>uk</strong> recibidos por MQTT sobre WebSockets. En navegador, MQTT debe usar WebSocket, no el puerto TCP clásico [web:246][web:247].</p>
       </div>
       <button class="theme" id="themeBtn">Cambiar tema</button>
     </div>
@@ -52,10 +72,11 @@
     <div class="grid">
       <section class="card pad controls">
         <div>
-          <div class="label">Prueba de setpoint</div>
+          <div class="label">Setpoint</div>
           <div class="big" id="setpointBig">6.0 cm</div>
-          <div class="hint">Rango disponible 0 a 12 cm</div>
+          <div class="hint">Este valor se puede publicar por MQTT al ESP32.</div>
         </div>
+
 
         <div class="mode-group">
           <label>Modo de control</label>
@@ -63,33 +84,54 @@
             <button class="seg-btn active" id="cdBtn">CD</button>
             <button class="seg-btn" id="ddBtn">DD</button>
           </div>
-          <div class="mini-note">CD = continuo-discreto, DD = discreto-discreto.</div>
+          <div class="mini-note">Al cambiar, se publica a <span class="mono">cmd/mode</span>.</div>
         </div>
 
         <div class="field">
           <label for="sp">Altura deseada</label>
           <input id="sp" type="range" min="0" max="12" step="0.1" value="6.0" />
           <div class="row"><span>0 cm</span><strong id="spLabel">6.0 cm</strong><span>12 cm</span></div>
-        </div>
-
-        <div class="field">
-          <label for="speed">Velocidad de respuesta visual</label>
-          <input id="speed" type="range" min="0.01" max="0.08" step="0.005" value="0.035" />
-          <div class="hint">Más alto = llega más rápido. Cada modo tiene comportamiento distinto para que visualmente puedas notar la diferencia.</div>
+          <div class="hint">Cada cambio publica la referencia. MQTT.js en navegador usa WebSocket para publicar y suscribirse desde una página HTML [web:246][web:249].</div>
         </div>
 
         <div class="row">
-          <button class="btn btn-primary" id="playBtn">Pausar demo</button>
-          <button class="btn btn-secondary" id="resetBtn">Reiniciar</button>
+          <button class="btn btn-secondary" id="resetChartsBtn">Limpiar gráficas</button>
+        </div>
+
+
+        <div class="mqtt-group">
+          <div class="label">Conexión MQTT</div>
+          <div class="field">
+            <label for="brokerUrl">Broker WebSocket</label>
+            <input id="brokerUrl" type="text" value="wss://broker.emqx.io:8084/mqtt" />
+          </div>
+          <div class="field">
+            <label for="topicBase">Base de tópicos</label>
+            <input id="topicBase" type="text" value="andres/tanque2/demo01" />
+          </div>
+          <div class="field">
+            <label for="mqttUser">Usuario (opcional)</label>
+            <input id="mqttUser" type="text" placeholder="vacío si no aplica" />
+          </div>
+          <div class="field">
+            <label for="mqttPass">Contraseña (opcional)</label>
+            <input id="mqttPass" type="password" placeholder="vacío si no aplica" />
+          </div>
+          <div class="row">
+            <button class="btn btn-primary" id="connectBtn">Conectar MQTT</button>
+            <button class="btn btn-secondary" id="disconnectBtn">Desconectar</button>
+          </div>
+          <div id="connState" class="conn-state conn-off">Desconectado</div>
+          <div class="mini-note mono" id="topicsInfo">cmd/ref · cmd/mode · data/state</div>
         </div>
 
         <div class="metrics">
           <div class="metric"><small>Nivel medido</small><strong id="levelBox">0.0 cm</strong></div>
-          <div class="metric"><small>Error ek</small><strong id="errorBox">6.0 cm</strong></div>
+          <div class="metric"><small>Error ek</small><strong id="errorBox">0.0 cm</strong></div>
           <div class="metric"><small>Referencia</small><strong id="refBox">6.0 cm</strong></div>
           <div class="metric"><small>Señal uk</small><strong id="ukBox">0.0</strong></div>
           <div class="metric"><small>Modo</small><strong id="modeBox">CD</strong></div>
-          <div class="metric"><small>Estado</small><strong id="stateBox">Demo</strong></div>
+          <div class="metric"><small>Último mensaje</small><strong id="stateBox">Esperando</strong></div>
         </div>
       </section>
 
@@ -113,8 +155,8 @@
       </div>
 
       <section class="card pad tank-wrap">
-        <div class="status"><span class="dot"></span> Animación activa</div>
-        <svg viewBox="0 0 300 400" aria-label="Tanque animado con agua">
+        <div class="status"><span class="dot"></span> Visualización en tiempo real</div>
+        <svg viewBox="0 0 300 400" aria-label="Tanque animado con agua" style="max-width:260px;width:100%;margin:0 auto;">
           <defs>
             <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#8de7ef" />
@@ -130,13 +172,10 @@
             <rect id="waterBody" x="65" y="327" width="170" height="0" fill="url(#waterGradient)" opacity=".93"></rect>
             <path id="wave" d="M65 327 Q85 319 105 327 T145 327 T185 327 T235 327 L235 340 L65 340 Z" fill="#b9f7fb" opacity=".9"></path>
           </g>
-          <g opacity=".2">
-            <path d="M252 72c0 20-12 36-12 56s12 36 12 56" stroke="currentColor" stroke-width="6" stroke-linecap="round"></path>
-          </g>
           <text x="150" y="190" text-anchor="middle" font-size="38" font-weight="900" id="levelText" fill="currentColor">0.0 cm</text>
           <text x="150" y="360" text-anchor="middle" font-size="18" fill="currentColor">Tanque 2 · 0–12 cm</text>
         </svg>
-        <div class="footer-note">Ahora la interfaz incluye las dos señales del control: error <strong>ek</strong> y acción de control <strong>uk</strong>, además del botón para cambiar entre modo CD y DD antes de integrar MQTT.</div>
+        <div class="mini-note mono">Payload esperado en <span id="dataTopicLabel">andres/tanque2/demo01/data/state</span>: {"nivel":6.1,"ek":-0.1,"uk":48,"referencia":6.0,"modo":"CD"}</div>
       </section>
     </div>
   </div>
@@ -146,27 +185,26 @@
     const state = {
       setpoint: 6,
       level: 0,
-      velocity: 0,
-      running: true,
-      speed: 0.035,
-      tick: 0,
       phase: 0,
       theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
       mode: 'CD',
       ek: 0,
-      ek_1: 0,
       uk: 0,
-      uk_1: 0,
-      integral: 0
+      client: null,
+      connected: false,
+      seq: 0
     };
 
     const $ = id => document.getElementById(id);
-    const sp = $('sp'), speed = $('speed'), spLabel = $('spLabel'), setpointBig = $('setpointBig');
+    const sp = $('sp'), spLabel = $('spLabel'), setpointBig = $('setpointBig');
     const levelBox = $('levelBox'), errorBox = $('errorBox'), refBox = $('refBox'), stateBox = $('stateBox');
     const ukBox = $('ukBox'), modeBox = $('modeBox');
     const waterBody = $('waterBody'), wave = $('wave'), levelText = $('levelText');
-    const playBtn = $('playBtn'), resetBtn = $('resetBtn'), themeBtn = $('themeBtn');
+    const themeBtn = $('themeBtn');
     const cdBtn = $('cdBtn'), ddBtn = $('ddBtn');
+    const connectBtn = $('connectBtn'), disconnectBtn = $('disconnectBtn'), resetChartsBtn = $('resetChartsBtn');
+    const brokerUrl = $('brokerUrl'), topicBase = $('topicBase'), mqttUser = $('mqttUser'), mqttPass = $('mqttPass');
+    const connState = $('connState'), topicsInfo = $('topicsInfo'), dataTopicLabel = $('dataTopicLabel');
 
     document.documentElement.setAttribute('data-theme', state.theme);
 
@@ -184,17 +222,13 @@
 
     const errorChart = new Chart($('errorChart'), {
       type:'line',
-      data:{datasets:[
-        {label:'ek',data:[],borderColor:'#964219',pointRadius:0,borderWidth:3,tension:0.22}
-      ]},
+      data:{datasets:[{label:'ek',data:[],borderColor:'#964219',pointRadius:0,borderWidth:3,tension:0.22}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:axisColor()}}},scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},y:{min:-12,max:12,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
     });
 
     const controlChart = new Chart($('controlChart'), {
       type:'line',
-      data:{datasets:[
-        {label:'uk',data:[],borderColor:'#437a22',pointRadius:0,borderWidth:3,tension:0.18}
-      ]},
+      data:{datasets:[{label:'uk',data:[],borderColor:'#437a22',pointRadius:0,borderWidth:3,tension:0.18}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:axisColor()}}},scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},y:{min:0,max:255,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
     });
 
@@ -209,19 +243,32 @@
       });
     }
 
+    function topicPaths(){
+      const base = topicBase.value.trim().replace(/\/$/, '') || 'andres/tanque2/demo01';
+      return {
+        ref: `${base}/cmd/ref`,
+        mode: `${base}/cmd/mode`,
+        state: `${base}/data/state`,
+        ping: `${base}/status/ui`
+      };
+    }
+
+    function updateTopicLabels(){
+      const t = topicPaths();
+      topicsInfo.textContent = `${t.ref} · ${t.mode} · ${t.state}`;
+      dataTopicLabel.textContent = t.state;
+    }
+
     function clamp(v, min = 0, max = MAX){ return Math.max(min, Math.min(max, Number(v) || 0)); }
 
-    function saturate255(v){ return Math.max(0, Math.min(255, v)); }
-
-    function sync(){
+    function syncBoxes(){
       state.setpoint = clamp(sp.value);
-      state.speed = Number(speed.value);
       spLabel.textContent = state.setpoint.toFixed(1)+' cm';
       setpointBig.textContent = state.setpoint.toFixed(1)+' cm';
-      refBox.textContent = state.setpoint.toFixed(1)+' cm';
+      refBox.textContent = state.setpoint.toFixed(2)+' cm';
       levelBox.textContent = state.level.toFixed(2)+' cm';
-      errorBox.textContent = state.ek.toFixed(2)+' cm';
-      ukBox.textContent = state.uk.toFixed(1);
+      errorBox.textContent = state.ek.toFixed(3)+' cm';
+      ukBox.textContent = state.uk.toFixed(2);
       modeBox.textContent = state.mode;
       levelText.textContent = state.level.toFixed(1)+' cm';
     }
@@ -233,7 +280,7 @@
       const bodyH = pct*h;
       waterBody.setAttribute('y', y.toFixed(2));
       waterBody.setAttribute('height', bodyH.toFixed(2));
-      state.phase += 0.35;
+      state.phase += 0.25;
       const left = 65, right = 235, width = right-left, amp = 5;
       let d = `M ${left} ${y.toFixed(2)} `;
       for(let i=0;i<6;i++){
@@ -263,36 +310,11 @@
       controlChart.update('none');
     }
 
-    function computeControl(){
-      state.ek_1 = state.ek;
-      state.uk_1 = state.uk;
-      state.ek = state.setpoint - state.level;
-
-      if(state.mode === 'CD'){
-        const Kp = 30 * (state.speed / 0.035);
-        const Ki = 1.0 * (state.speed / 0.035);
-        const Ts = 0.1;
-        state.uk = state.uk_1 + Kp * (state.ek - state.ek_1) + Ki * Ts * state.ek;
-      } else {
-        const q0 = 50 * (state.speed / 0.035);
-        const q1 = -49 * (state.speed / 0.035);
-        state.uk = state.uk_1 + q0 * state.ek + q1 * state.ek_1;
-      }
-
-      state.uk = saturate255(state.uk);
-    }
-
-    function plantStep(){
-      const force = (state.uk / 255) * (state.mode === 'CD' ? 0.085 : 0.1);
-      const diff = state.setpoint - state.level;
-      const damping = state.mode === 'CD' ? 0.92 : 0.88;
-      const restoring = diff * (state.mode === 'CD' ? 0.004 : 0.0032);
-      const noise = (Math.random() - 0.5) * 0.006;
-
-      state.velocity = (state.velocity + force * Math.sign(diff || 1) + restoring) * damping;
-      state.level = clamp(state.level + state.velocity + noise);
-
-      if (Math.abs(diff) < 0.03 && Math.abs(state.velocity) < 0.01) state.velocity = 0;
+    function clearCharts(){
+      [chart, errorChart, controlChart].forEach(c => c.data.datasets.forEach(d => d.data = []));
+      chart.update('none');
+      errorChart.update('none');
+      controlChart.update('none');
     }
 
     function updateModeButtons(){
@@ -300,61 +322,134 @@
       ddBtn.classList.toggle('active', state.mode === 'DD');
     }
 
-    function resetDynamics(){
-      state.level = 0;
-      state.velocity = 0;
-      state.ek = 0;
-      state.ek_1 = 0;
-      state.uk = 0;
-      state.uk_1 = 0;
-      state.integral = 0;
-      [chart, errorChart, controlChart].forEach(c => c.data.datasets.forEach(d => d.data = []));
+    function setConnState(kind, message){
+      connState.className = `conn-state ${kind}`;
+      connState.textContent = message;
     }
 
-    function update(){
-      if(state.running){
-        computeControl();
-        plantStep();
-        state.tick++;
-        if(state.tick % 5 === 0) pushCharts();
+    function publishJSON(topic, obj){
+      if(!state.client || !state.connected) return;
+      state.client.publish(topic, JSON.stringify(obj));
+    }
+
+    function publishRef(){
+      const t = topicPaths();
+      publishJSON(t.ref, { referencia: state.setpoint, ts: Date.now() });
+    }
+
+    function publishMode(){
+      const t = topicPaths();
+      publishJSON(t.mode, { modo: state.mode, ts: Date.now() });
+    }
+
+    function connectMQTT(){
+      if(state.client){
+        try { state.client.end(true); } catch(e) {}
       }
-      sync();
-      drawTank();
-      requestAnimationFrame(update);
+
+      const url = brokerUrl.value.trim();
+      const t = topicPaths();
+      const options = {
+        clientId: `web_${Math.random().toString(16).slice(2,10)}`,
+        clean: true,
+        connectTimeout: 5000,
+        reconnectPeriod: 3000
+      };
+
+      if(mqttUser.value.trim()) options.username = mqttUser.value.trim();
+      if(mqttPass.value.trim()) options.password = mqttPass.value;
+
+      state.client = mqtt.connect(url, options);
+      setConnState('conn-off', 'Conectando...');
+      stateBox.textContent = 'Conectando MQTT';
+
+      state.client.on('connect', () => {
+        state.connected = true;
+        setConnState('conn-on', 'Conectado');
+        stateBox.textContent = 'MQTT activo';
+        state.client.subscribe(t.state);
+        publishRef();
+        publishMode();
+        publishJSON(t.ping, { ui: 'online', ts: Date.now() });
+      });
+
+      state.client.on('reconnect', () => {
+        setConnState('conn-off', 'Reconectando...');
+      });
+
+      state.client.on('error', (err) => {
+        state.connected = false;
+        setConnState('conn-err', 'Error MQTT');
+        stateBox.textContent = err?.message || 'Error';
+      });
+
+      state.client.on('close', () => {
+        state.connected = false;
+        setConnState('conn-off', 'Desconectado');
+      });
+
+      state.client.on('message', (topic, payload) => {
+        if(topic !== t.state) return;
+        try {
+          const data = JSON.parse(payload.toString());
+          if(typeof data.nivel !== 'undefined') state.level = clamp(data.nivel);
+          if(typeof data.ek !== 'undefined') state.ek = Number(data.ek) || 0;
+          if(typeof data.uk !== 'undefined') state.uk = Number(data.uk) || 0;
+          if(typeof data.referencia !== 'undefined') {
+            state.setpoint = clamp(data.referencia);
+            sp.value = state.setpoint;
+          }
+          if(typeof data.modo === 'string') state.mode = data.modo.toUpperCase() === 'DD' ? 'DD' : 'CD';
+          updateModeButtons();
+          syncBoxes();
+          drawTank();
+          pushCharts();
+          stateBox.textContent = 'Dato recibido';
+        } catch(e){
+          stateBox.textContent = 'Payload inválido';
+        }
+      });
     }
 
-    sp.addEventListener('input', sync);
-    speed.addEventListener('input', sync);
+    function disconnectMQTT(){
+      if(state.client){
+        try {
+          const t = topicPaths();
+          publishJSON(t.ping, { ui: 'offline', ts: Date.now() });
+          state.client.end(true);
+        } catch(e) {}
+      }
+      state.client = null;
+      state.connected = false;
+      setConnState('conn-off', 'Desconectado');
+      stateBox.textContent = 'MQTT inactivo';
+    }
+
+    sp.addEventListener('input', ()=>{
+      state.setpoint = clamp(sp.value);
+      syncBoxes();
+      publishRef();
+    });
 
     cdBtn.addEventListener('click', ()=>{
       state.mode = 'CD';
       updateModeButtons();
-      stateBox.textContent = 'Modo CD';
-      state.ek = state.ek_1 = state.uk = state.uk_1 = 0;
+      syncBoxes();
+      publishMode();
     });
 
     ddBtn.addEventListener('click', ()=>{
       state.mode = 'DD';
       updateModeButtons();
-      stateBox.textContent = 'Modo DD';
-      state.ek = state.ek_1 = state.uk = state.uk_1 = 0;
+      syncBoxes();
+      publishMode();
     });
 
-    playBtn.addEventListener('click', ()=>{
-      state.running = !state.running;
-      playBtn.textContent = state.running ? 'Pausar demo' : 'Iniciar demo';
-      stateBox.textContent = state.running ? `Demo ${state.mode}` : 'Pausada';
-    });
+    connectBtn.addEventListener('click', connectMQTT);
+    disconnectBtn.addEventListener('click', disconnectMQTT);
+    resetChartsBtn.addEventListener('click', clearCharts);
 
-    resetBtn.addEventListener('click', ()=>{
-      resetDynamics();
-      sync();
-      drawTank();
-      chart.update('none');
-      errorChart.update('none');
-      controlChart.update('none');
-      stateBox.textContent = 'Reiniciada';
-    });
+    topicBase.addEventListener('input', updateTopicLabels);
 
     themeBtn.addEventListener('click', ()=>{
       state.theme = state.theme === 'dark' ? 'light' : 'dark';
@@ -362,11 +457,17 @@
       refreshChartTheme();
     });
 
+    function animate(){
+      drawTank();
+      requestAnimationFrame(animate);
+    }
+
+    updateTopicLabels();
     updateModeButtons();
-    sync();
+    syncBoxes();
     drawTank();
     refreshChartTheme();
-    update();
+    animate();
   </script>
 </body>
 </html>
