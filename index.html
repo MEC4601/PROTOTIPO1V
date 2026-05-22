@@ -335,7 +335,21 @@
 
     function publishRef(){
       const t = topicPaths();
-      publishJSON(t.ref, { referencia: state.setpoint, ts: Date.now() });
+      if(!state.client || !state.connected){
+        console.log('MQTT no conectado');
+        return;
+      }
+
+      const payload = JSON.stringify({
+        referencia: state.setpoint,
+        ts: Date.now()
+      });
+
+      console.log('Publicando ref:', t.ref, payload);
+      state.client.publish(t.ref, payload, { qos: 0, retain: false }, (err) => {
+        if(err) console.log('Error publicando ref:', err);
+        else console.log('Ref enviada OK');
+      });
     }
 
     function publishMode(){
@@ -426,8 +440,6 @@
     sp.addEventListener('input', ()=>{
       state.setpoint = clamp(sp.value);
       syncBoxes();
-      state.localSetpointChange = true;
-      state.ignoreRemoteSetpoint = true;
       publishRef();
     });
 
