@@ -98,7 +98,6 @@
           <button class="btn btn-secondary" id="resetChartsBtn">Limpiar gráficas</button>
         </div>
 
-
         <div class="mqtt-group">
           <div class="label">Conexión MQTT</div>
           <div class="field">
@@ -192,7 +191,8 @@
       uk: 0,
       client: null,
       connected: false,
-      seq: 0
+      seq: 0,
+      localSetpointChange: false
     };
 
     const $ = id => document.getElementById(id);
@@ -395,7 +395,7 @@
           if(typeof data.nivel !== 'undefined') state.level = clamp(data.nivel);
           if(typeof data.ek !== 'undefined') state.ek = Number(data.ek) || 0;
           if(typeof data.uk !== 'undefined') state.uk = Number(data.uk) || 0;
-          if(typeof data.referencia !== 'undefined') {
+          if(typeof data.referencia !== 'undefined' && !state.localSetpointChange) {
             state.setpoint = clamp(data.referencia);
             sp.value = state.setpoint;
           }
@@ -428,7 +428,10 @@
     sp.addEventListener('input', ()=>{
       state.setpoint = clamp(sp.value);
       syncBoxes();
+      state.localSetpointChange = true;
       publishRef();
+      clearTimeout(state.setpointTimer);
+      state.setpointTimer = setTimeout(()=>{ state.localSetpointChange = false; }, 250);
     });
 
     cdBtn.addEventListener('click', ()=>{
@@ -471,3 +474,4 @@
   </script>
 </body>
 </html>
+
