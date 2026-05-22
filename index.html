@@ -55,6 +55,49 @@
     .conn-on{background:rgba(67,122,34,.12);color:var(--success)}
     .conn-err{background:rgba(161,44,123,.12);color:var(--danger)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86rem;word-break:break-all}
+
+    /* ── Señales ── */
+    .senal-group { display: grid; gap: 10px; }
+    .senal-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .senal-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 18px;
+      padding: 14px 10px;
+      font-weight: 800;
+      font-size: .82rem;
+      cursor: pointer;
+      transition: .2s ease;
+      line-height: 1.2;
+    }
+    .senal-btn svg { opacity: .55; transition: .2s ease; }
+    .senal-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(79,152,163,.07);
+    }
+    .senal-btn:hover svg { opacity: 1; }
+    .senal-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 8px 18px rgba(1,105,111,.22);
+    }
+    .senal-btn.active svg { opacity: 1; }
+    /* FIJA ocupa el ancho completo */
+    .senal-btn-off {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      justify-content: center;
+      gap: 10px;
+    }
+
     @media (max-width:1280px){.grid{grid-template-columns:340px minmax(0,1fr) 280px}.charts-grid{grid-template-columns:1fr 1fr}.tank-wrap{position:static}}
     @media (max-width:1100px){.grid{grid-template-columns:1fr}.charts-grid{grid-template-columns:1fr}.chart-wrap{height:320px}.chart-wrap.small{height:220px}.tank-wrap{position:static}}
   </style>
@@ -64,7 +107,7 @@
     <div class="top">
       <div class="title">
         <h1>Interfaz MQTT</h1>
-        <p>Panel web para controlar referencia, cambiar entre modos CD y DD y visualizar nivel, error <strong>ek</strong> y control <strong>uk</strong> recibidos por MQTT sobre WebSockets. En navegador, MQTT debe usar WebSocket, no el puerto TCP clásico [web:246][web:247].</p>
+        <p>Panel web para controlar referencia, cambiar entre modos CD y DD, activar señales de referencia dinámica y visualizar nivel, error <strong>ek</strong> y control <strong>uk</strong> recibidos por MQTT sobre WebSockets.</p>
       </div>
       <button class="theme" id="themeBtn">Cambiar tema</button>
     </div>
@@ -77,7 +120,7 @@
           <div class="hint">Este valor se puede publicar por MQTT al ESP32.</div>
         </div>
 
-
+        <!-- Modo CD / DD -->
         <div class="mode-group">
           <label>Modo de control</label>
           <div class="segmented">
@@ -87,17 +130,66 @@
           <div class="mini-note">Al cambiar, se publica a <span class="mono">cmd/mode</span>.</div>
         </div>
 
+        <!-- Slider referencia -->
         <div class="field">
-          <label for="sp">Altura deseada</label>
+          <label for="sp">Altura deseada / Techo señal</label>
           <input id="sp" type="range" min="0" max="12" step="0.1" value="6.0" />
           <div class="row"><span>0 cm</span><strong id="spLabel">6.0 cm</strong><span>12 cm</span></div>
-          <div class="hint">Cada cambio publica la referencia. MQTT.js en navegador usa WebSocket para publicar y suscribirse desde una página HTML [web:246][web:249].</div>
+          <div class="hint">En modo señal dinámica, este valor es el <strong>techo</strong> (amplitud máxima). La señal barre de 0 hasta aquí.</div>
         </div>
+
+        <!-- ══ SEÑALES DE REFERENCIA ══ -->
+        <div class="senal-group">
+          <label>Señal de referencia</label>
+
+          <div class="senal-grid">
+
+            <!-- FIJA (off) — fila completa -->
+            <button class="senal-btn senal-btn-off active" id="sBtn-off" onclick="setSenal('off')">
+              <!-- línea horizontal -->
+              <svg width="32" height="20" viewBox="0 0 32 20" fill="none">
+                <line x1="0" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+              FIJA
+            </button>
+
+            <!-- SENO -->
+            <button class="senal-btn" id="sBtn-seno" onclick="setSenal('seno')">
+              <svg width="36" height="22" viewBox="0 0 36 22" fill="none">
+                <path d="M0 11 C4.5 11 4.5 2 9 2 S13.5 11 18 11 22.5 20 27 20 31.5 11 36 11"
+                      stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+              </svg>
+              SENO
+            </button>
+
+            <!-- RAMPA -->
+            <button class="senal-btn" id="sBtn-rampa" onclick="setSenal('rampa')">
+              <svg width="36" height="22" viewBox="0 0 36 22" fill="none">
+                <polyline points="0,20 18,2 18,20 36,2"
+                          stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              RAMPA
+            </button>
+
+            <!-- CUADRADA -->
+            <button class="senal-btn" id="sBtn-cuadrada" onclick="setSenal('cuadrada')">
+              <svg width="36" height="22" viewBox="0 0 36 22" fill="none">
+                <polyline points="0,18 0,4 9,4 9,18 18,18 18,4 27,4 27,18 36,18 36,4"
+                          stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              CUADRADA 50%
+            </button>
+
+          </div>
+          <div class="mini-note">Publica a <span class="mono">cmd/senal</span>. Periodo: 10 s.</div>
+        </div>
+        <!-- ══ FIN SEÑALES ══ -->
 
         <div class="row">
           <button class="btn btn-secondary" id="resetChartsBtn">Limpiar gráficas</button>
         </div>
 
+        <!-- Conexión MQTT -->
         <div class="mqtt-group">
           <div class="label">Conexión MQTT</div>
           <div class="field">
@@ -121,22 +213,24 @@
             <button class="btn btn-secondary" id="disconnectBtn">Desconectar</button>
           </div>
           <div id="connState" class="conn-state conn-off">Desconectado</div>
-          <div class="mini-note mono" id="topicsInfo">cmd/ref · cmd/mode · data/state</div>
+          <div class="mini-note mono" id="topicsInfo">cmd/ref · cmd/mode · cmd/senal · data/state</div>
         </div>
 
+        <!-- Métricas -->
         <div class="metrics">
           <div class="metric"><small>Nivel medido</small><strong id="levelBox">0.0 cm</strong></div>
           <div class="metric"><small>Error ek</small><strong id="errorBox">0.0 cm</strong></div>
-          <div class="metric"><small>Referencia</small><strong id="refBox">6.0 cm</strong></div>
+          <div class="metric"><small>Referencia activa</small><strong id="refBox">6.0 cm</strong></div>
           <div class="metric"><small>Señal uk</small><strong id="ukBox">0.0</strong></div>
           <div class="metric"><small>Modo</small><strong id="modeBox">CD</strong></div>
-          <div class="metric"><small>Último mensaje</small><strong id="stateBox">Esperando</strong></div>
+          <div class="metric"><small>Señal ref</small><strong id="senalBox">FIJA</strong></div>
         </div>
       </section>
 
+      <!-- Columna central -->
       <div class="center-col">
         <section class="card pad">
-          <div class="label">Nivel y referencia</div>
+          <div class="label">Nivel y referencia activa</div>
           <div class="chart-wrap"><canvas id="chart"></canvas></div>
         </section>
 
@@ -153,9 +247,10 @@
         </div>
       </div>
 
+      <!-- Tanque SVG -->
       <section class="card pad tank-wrap">
         <div class="status"><span class="dot"></span> Visualización en tiempo real</div>
-        <svg viewBox="0 0 300 400" aria-label="Tanque animado con agua" style="max-width:260px;width:100%;margin:0 auto;">
+        <svg viewBox="0 0 300 400" aria-label="Tanque animado" style="max-width:260px;width:100%;margin:0 auto;">
           <defs>
             <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#8de7ef" />
@@ -171,10 +266,15 @@
             <rect id="waterBody" x="65" y="327" width="170" height="0" fill="url(#waterGradient)" opacity=".93"></rect>
             <path id="wave" d="M65 327 Q85 319 105 327 T145 327 T185 327 T235 327 L235 340 L65 340 Z" fill="#b9f7fb" opacity=".9"></path>
           </g>
+          <!-- Línea de referencia activa -->
+          <line id="refLine" x1="55" x2="245" y1="200" y2="200"
+                stroke="#f0a15f" stroke-width="2.5" stroke-dasharray="6,4" opacity=".9"/>
+          <text id="refLineLabel" x="248" y="204" font-size="11" fill="#f0a15f" font-family="ui-monospace,monospace">ref</text>
           <text x="150" y="190" text-anchor="middle" font-size="38" font-weight="900" id="levelText" fill="currentColor">0.0 cm</text>
           <text x="150" y="360" text-anchor="middle" font-size="18" fill="currentColor">Tanque 2 · 0–12 cm</text>
         </svg>
-        <div class="mini-note mono">Payload esperado en <span id="dataTopicLabel">andres/tanque2/demo01/data/state</span>: {"nivel":6.1,"ek":-0.1,"uk":48,"referencia":6.0,"modo":"CD"}</div>
+        <div class="mini-note mono">Señal activa: <strong id="senalTankLabel">FIJA</strong> | Ref: <strong id="refTankVal">6.0 cm</strong></div>
+        <div class="mini-note mono" style="margin-top:4px">topic data: <span id="dataTopicLabel">andres/tanque2/demo01/data/state</span></div>
       </section>
     </div>
   </div>
@@ -187,20 +287,21 @@
       phase: 0,
       theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
       mode: 'CD',
+      senal: 'off',          // ← NUEVO
       ek: 0,
       uk: 0,
+      refActiva: 6,          // ← referencia que publica el ESP32 (puede ser dinámica)
       client: null,
       connected: false,
-      seq: 0,
-      localSetpointChange: false,
-      ignoreRemoteSetpoint: true
     };
 
     const $ = id => document.getElementById(id);
     const sp = $('sp'), spLabel = $('spLabel'), setpointBig = $('setpointBig');
-    const levelBox = $('levelBox'), errorBox = $('errorBox'), refBox = $('refBox'), stateBox = $('stateBox');
-    const ukBox = $('ukBox'), modeBox = $('modeBox');
+    const levelBox = $('levelBox'), errorBox = $('errorBox'), refBox = $('refBox');
+    const ukBox = $('ukBox'), modeBox = $('modeBox'), senalBox = $('senalBox');
     const waterBody = $('waterBody'), wave = $('wave'), levelText = $('levelText');
+    const refLine = $('refLine'), refLineLabel = $('refLineLabel');
+    const senalTankLabel = $('senalTankLabel'), refTankVal = $('refTankVal');
     const themeBtn = $('themeBtn');
     const cdBtn = $('cdBtn'), ddBtn = $('ddBtn');
     const connectBtn = $('connectBtn'), disconnectBtn = $('disconnectBtn'), resetChartsBtn = $('resetChartsBtn');
@@ -209,28 +310,38 @@
 
     document.documentElement.setAttribute('data-theme', state.theme);
 
+    // ── Charts ──────────────────────────────────────────────────
     function axisColor(){ return getComputedStyle(document.body).color; }
     function gridColor(){ return 'rgba(127,127,127,.12)'; }
 
     const chart = new Chart($('chart'), {
       type:'line',
       data:{datasets:[
-        {label:'Referencia',data:[],borderColor:'#01696f',pointRadius:0,borderWidth:3,tension:0.25},
-        {label:'Nivel medido',data:[],borderColor:'#006494',pointRadius:0,borderWidth:3,tension:0.28}
+        {label:'Referencia activa',data:[],borderColor:'#f0a15f',pointRadius:0,borderWidth:2.5,tension:0.2,borderDash:[5,4]},
+        {label:'Nivel medido',     data:[],borderColor:'#006494',pointRadius:0,borderWidth:3,  tension:0.28}
       ]},
-      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:axisColor()}}},scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},y:{min:0,max:12,ticks:{color:axisColor(),callback:v=>v+' cm'},grid:{color:gridColor()}}}}
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{labels:{color:axisColor()}}},
+        scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},
+                y:{min:0,max:12,ticks:{color:axisColor(),callback:v=>v+' cm'},grid:{color:gridColor()}}}}
     });
 
     const errorChart = new Chart($('errorChart'), {
       type:'line',
       data:{datasets:[{label:'ek',data:[],borderColor:'#964219',pointRadius:0,borderWidth:3,tension:0.22}]},
-      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:axisColor()}}},scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},y:{min:-12,max:12,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{labels:{color:axisColor()}}},
+        scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},
+                y:{min:-12,max:12,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
     });
 
     const controlChart = new Chart($('controlChart'), {
       type:'line',
       data:{datasets:[{label:'uk',data:[],borderColor:'#437a22',pointRadius:0,borderWidth:3,tension:0.18}]},
-      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:axisColor()}}},scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},y:{min:0,max:255,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{labels:{color:axisColor()}}},
+        scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},
+                y:{min:0,max:255,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
     });
 
     function refreshChartTheme() {
@@ -244,90 +355,124 @@
       });
     }
 
+    // ── Topics ───────────────────────────────────────────────────
     function topicPaths(){
       const base = topicBase.value.trim().replace(/\/$/, '') || 'andres/tanque2/demo01';
       return {
-        ref: `${base}/cmd/ref`,
-        mode: `${base}/cmd/mode`,
+        ref:   `${base}/cmd/ref`,
+        mode:  `${base}/cmd/mode`,
+        senal: `${base}/cmd/senal`,     // ← NUEVO
         state: `${base}/data/state`,
-        ping: `${base}/status/ui`
+        ping:  `${base}/status/ui`
       };
     }
 
     function updateTopicLabels(){
       const t = topicPaths();
-      topicsInfo.textContent = `${t.ref} · ${t.mode} · ${t.state}`;
+      topicsInfo.textContent = `${t.ref} · ${t.mode} · ${t.senal} · ${t.state}`;
       dataTopicLabel.textContent = t.state;
     }
 
-    function clamp(v, min = 0, max = MAX){ return Math.max(min, Math.min(max, Number(v) || 0)); }
+    function clamp(v, min=0, max=MAX){ return Math.max(min, Math.min(max, Number(v)||0)); }
 
+    // ── Sincronizar métricas ─────────────────────────────────────
     function syncBoxes(){
       state.setpoint = clamp(sp.value);
-      spLabel.textContent = state.setpoint.toFixed(1)+' cm';
-      setpointBig.textContent = state.setpoint.toFixed(1)+' cm';
-      refBox.textContent = state.setpoint.toFixed(2)+' cm';
-      levelBox.textContent = state.level.toFixed(2)+' cm';
-      errorBox.textContent = state.ek.toFixed(3)+' cm';
-      ukBox.textContent = state.uk.toFixed(2);
-      modeBox.textContent = state.mode;
-      levelText.textContent = state.level.toFixed(1)+' cm';
+      spLabel.textContent      = state.setpoint.toFixed(1)+' cm';
+      setpointBig.textContent  = state.setpoint.toFixed(1)+' cm';
+      // refBox muestra la referencia ACTIVA que viene del ESP32
+      refBox.textContent       = state.refActiva.toFixed(2)+' cm';
+      levelBox.textContent     = state.level.toFixed(2)+' cm';
+      errorBox.textContent     = state.ek.toFixed(3)+' cm';
+      ukBox.textContent        = state.uk.toFixed(2);
+      modeBox.textContent      = state.mode;
+      senalBox.textContent     = state.senal.toUpperCase();
+      senalTankLabel.textContent = state.senal.toUpperCase();
+      refTankVal.textContent   = state.refActiva.toFixed(2)+' cm';
+      levelText.textContent    = state.level.toFixed(1)+' cm';
     }
 
+    // ── Tanque SVG ───────────────────────────────────────────────
     function drawTank(){
-      const pct = state.level / MAX;
-      const top = 42, h = 285;
-      const y = top + h - pct*h;
-      const bodyH = pct*h;
+      const pct  = state.level / MAX;
+      const top  = 42, h = 285;
+      const y    = top + h - pct*h;
       waterBody.setAttribute('y', y.toFixed(2));
-      waterBody.setAttribute('height', bodyH.toFixed(2));
+      waterBody.setAttribute('height', (pct*h).toFixed(2));
+
+      // ola
       state.phase += 0.25;
-      const left = 65, right = 235, width = right-left, amp = 5;
+      const left=65, right=235, width=right-left, amp=5;
       let d = `M ${left} ${y.toFixed(2)} `;
       for(let i=0;i<6;i++){
-        const x1 = left + width/6*i;
-        const x2 = left + width/6*(i+1);
-        const cx = (x1+x2)/2;
-        const cy = y + Math.sin(state.phase+i)*amp;
-        d += `Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${x2.toFixed(2)} ${y.toFixed(2)} `;
+        const x1=left+width/6*i, x2=left+width/6*(i+1), cx=(x1+x2)/2;
+        const cy=y+Math.sin(state.phase+i)*amp;
+        d+=`Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${x2.toFixed(2)} ${y.toFixed(2)} `;
       }
-      d += `L ${right} 340 L ${left} 340 Z`;
+      d+=`L ${right} 340 L ${left} 340 Z`;
       wave.setAttribute('d', d);
+
+      // Línea de referencia activa
+      const refPct = state.refActiva / MAX;
+      const refY   = (top + h - refPct*h).toFixed(2);
+      refLine.setAttribute('y1', refY);
+      refLine.setAttribute('y2', refY);
+      refLineLabel.setAttribute('y', (parseFloat(refY)+4).toFixed(2));
+      refLineLabel.textContent = state.refActiva.toFixed(1)+' cm';
     }
 
+    // ── Gráficas ─────────────────────────────────────────────────
     function pushToDataset(dataset, value){
-      dataset.push({x: dataset.length ? dataset[dataset.length-1].x + 1 : 0, y: value});
-      if(dataset.length > 80) dataset.shift();
-      dataset.forEach((p,i)=>p.x = i);
+      dataset.push({x: dataset.length ? dataset[dataset.length-1].x+1 : 0, y: value});
+      if(dataset.length>80) dataset.shift();
+      dataset.forEach((p,i)=>p.x=i);
     }
-
     function pushCharts(){
-      pushToDataset(chart.data.datasets[0].data, state.setpoint);
+      pushToDataset(chart.data.datasets[0].data, state.refActiva);   // referencia activa (dinámica)
       pushToDataset(chart.data.datasets[1].data, state.level);
       pushToDataset(errorChart.data.datasets[0].data, state.ek);
       pushToDataset(controlChart.data.datasets[0].data, state.uk);
-      chart.update('none');
-      errorChart.update('none');
-      controlChart.update('none');
+      chart.update('none'); errorChart.update('none'); controlChart.update('none');
     }
-
     function clearCharts(){
-      [chart, errorChart, controlChart].forEach(c => c.data.datasets.forEach(d => d.data = []));
-      chart.update('none');
-      errorChart.update('none');
-      controlChart.update('none');
+      [chart,errorChart,controlChart].forEach(c=>c.data.datasets.forEach(d=>d.data=[]));
+      chart.update('none'); errorChart.update('none'); controlChart.update('none');
     }
 
+    // ── Botones modo ─────────────────────────────────────────────
     function updateModeButtons(){
-      cdBtn.classList.toggle('active', state.mode === 'CD');
-      ddBtn.classList.toggle('active', state.mode === 'DD');
+      cdBtn.classList.toggle('active', state.mode==='CD');
+      ddBtn.classList.toggle('active', state.mode==='DD');
     }
 
+    // ── Botones señal ─────────────────────────────────────────────
+    const SENALES = ['off','seno','rampa','cuadrada'];
+
+    function updateSenalButtons(){
+      SENALES.forEach(s => {
+        const btn = $('sBtn-'+s);
+        if(btn) btn.classList.toggle('active', state.senal===s);
+      });
+    }
+
+    function setSenal(s){
+      state.senal = s;
+      updateSenalButtons();
+      syncBoxes();
+      // Publicar al ESP32
+      const t = topicPaths();
+      if(state.client && state.connected){
+        state.client.publish(t.senal, s);
+      }
+    }
+
+    // ── Estado conexión ──────────────────────────────────────────
     function setConnState(kind, message){
       connState.className = `conn-state ${kind}`;
       connState.textContent = message;
     }
 
+    // ── Publicar ─────────────────────────────────────────────────
     function publishJSON(topic, obj){
       if(!state.client || !state.connected) return;
       state.client.publish(topic, JSON.stringify(obj));
@@ -335,21 +480,8 @@
 
     function publishRef(){
       const t = topicPaths();
-      if(!state.client || !state.connected){
-        console.log('MQTT no conectado');
-        return;
-      }
-
-      const payload = JSON.stringify({
-        referencia: state.setpoint,
-        ts: Date.now()
-      });
-
-      console.log('Publicando ref:', t.ref, payload);
-      state.client.publish(t.ref, payload, { qos: 0, retain: false }, (err) => {
-        if(err) console.log('Error publicando ref:', err);
-        else console.log('Ref enviada OK');
-      });
+      if(!state.client || !state.connected) return;
+      state.client.publish(t.ref, JSON.stringify({ referencia: state.setpoint, ts: Date.now() }));
     }
 
     function publishMode(){
@@ -357,125 +489,95 @@
       publishJSON(t.mode, { modo: state.mode, ts: Date.now() });
     }
 
+    // ── MQTT ─────────────────────────────────────────────────────
     function connectMQTT(){
-      if(state.client){
-        try { state.client.end(true); } catch(e) {}
-      }
+      if(state.client){ try{ state.client.end(true); }catch(e){} }
 
       const url = brokerUrl.value.trim();
-      const t = topicPaths();
+      const t   = topicPaths();
       const options = {
         clientId: `web_${Math.random().toString(16).slice(2,10)}`,
-        clean: true,
-        connectTimeout: 5000,
-        reconnectPeriod: 3000
+        clean: true, connectTimeout: 5000, reconnectPeriod: 3000
       };
-
       if(mqttUser.value.trim()) options.username = mqttUser.value.trim();
       if(mqttPass.value.trim()) options.password = mqttPass.value;
 
       state.client = mqtt.connect(url, options);
-      setConnState('conn-off', 'Conectando...');
-      stateBox.textContent = 'Conectando MQTT';
+      setConnState('conn-off','Conectando...');
 
-      state.client.on('connect', () => {
+      state.client.on('connect', ()=>{
         state.connected = true;
-        setConnState('conn-on', 'Conectado');
-        stateBox.textContent = 'MQTT activo';
+        setConnState('conn-on','Conectado');
         state.client.subscribe(t.state);
         publishRef();
         publishMode();
-        publishJSON(t.ping, { ui: 'online', ts: Date.now() });
+        // Sincronizar señal activa al conectar
+        state.client.publish(t.senal, state.senal);
+        publishJSON(t.ping, { ui:'online', ts:Date.now() });
       });
 
-      state.client.on('reconnect', () => {
-        setConnState('conn-off', 'Reconectando...');
-      });
+      state.client.on('reconnect', ()=>{ setConnState('conn-off','Reconectando...'); });
+      state.client.on('error', err=>{ state.connected=false; setConnState('conn-err','Error MQTT'); });
+      state.client.on('close', ()=>{ state.connected=false; setConnState('conn-off','Desconectado'); });
 
-      state.client.on('error', (err) => {
-        state.connected = false;
-        setConnState('conn-err', 'Error MQTT');
-        stateBox.textContent = err?.message || 'Error';
-      });
-
-      state.client.on('close', () => {
-        state.connected = false;
-        setConnState('conn-off', 'Desconectado');
-      });
-
-      state.client.on('message', (topic, payload) => {
-        if(topic !== t.state) return;
+      state.client.on('message', (topic, payload)=>{
+        if(topic!==t.state) return;
         try {
-          const data = JSON.parse(payload.toString());
-          if(typeof data.nivel !== 'undefined') state.level = clamp(data.nivel);
-          if(typeof data.ek !== 'undefined') state.ek = Number(data.ek) || 0;
-          if(typeof data.uk !== 'undefined') state.uk = Number(data.uk) || 0;
-          // referencia remota no debe sobrescribir el slider local
-          if(typeof data.modo === 'string') state.mode = data.modo.toUpperCase() === 'DD' ? 'DD' : 'CD';
+          const d = JSON.parse(payload.toString());
+          if(typeof d.nivel  !== 'undefined') state.level     = clamp(d.nivel);
+          if(typeof d.ek     !== 'undefined') state.ek        = Number(d.ek)||0;
+          if(typeof d.uk     !== 'undefined') state.uk        = Number(d.uk)||0;
+          // ref: viene del ESP32 como referencia activa (dinámica si hay señal)
+          if(typeof d.ref    !== 'undefined') state.refActiva = clamp(d.ref);
+          if(typeof d.modo   === 'string')    state.mode      = d.modo.toUpperCase()==='DD' ? 'DD' : 'CD';
+          // Sincronizar botón señal si el ESP32 reporta cambio
+          if(typeof d.senal  === 'string' && SENALES.includes(d.senal)){
+            state.senal = d.senal;
+            updateSenalButtons();
+          }
           updateModeButtons();
           syncBoxes();
           drawTank();
           pushCharts();
-          stateBox.textContent = 'Dato recibido';
-        } catch(e){
-          stateBox.textContent = 'Payload inválido';
-        }
+        } catch(e){ /* payload inválido */ }
       });
     }
 
     function disconnectMQTT(){
       if(state.client){
-        try {
+        try{
           const t = topicPaths();
-          publishJSON(t.ping, { ui: 'offline', ts: Date.now() });
+          publishJSON(t.ping,{ui:'offline',ts:Date.now()});
           state.client.end(true);
-        } catch(e) {}
+        }catch(e){}
       }
-      state.client = null;
-      state.connected = false;
-      setConnState('conn-off', 'Desconectado');
-      stateBox.textContent = 'MQTT inactivo';
+      state.client=null; state.connected=false;
+      setConnState('conn-off','Desconectado');
     }
 
-    sp.addEventListener('input', ()=>{
-      state.setpoint = clamp(sp.value);
-      syncBoxes();
-      publishRef();
-    });
+    // ── Eventos ───────────────────────────────────────────────────
+    sp.addEventListener('input',()=>{ state.setpoint=clamp(sp.value); syncBoxes(); publishRef(); });
 
-    cdBtn.addEventListener('click', ()=>{
-      state.mode = 'CD';
-      updateModeButtons();
-      syncBoxes();
-      publishMode();
-    });
-
-    ddBtn.addEventListener('click', ()=>{
-      state.mode = 'DD';
-      updateModeButtons();
-      syncBoxes();
-      publishMode();
-    });
+    cdBtn.addEventListener('click',()=>{ state.mode='CD'; updateModeButtons(); syncBoxes(); publishMode(); });
+    ddBtn.addEventListener('click',()=>{ state.mode='DD'; updateModeButtons(); syncBoxes(); publishMode(); });
 
     connectBtn.addEventListener('click', connectMQTT);
     disconnectBtn.addEventListener('click', disconnectMQTT);
     resetChartsBtn.addEventListener('click', clearCharts);
-
     topicBase.addEventListener('input', updateTopicLabels);
 
-    themeBtn.addEventListener('click', ()=>{
-      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    themeBtn.addEventListener('click',()=>{
+      state.theme = state.theme==='dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', state.theme);
       refreshChartTheme();
     });
 
-    function animate(){
-      drawTank();
-      requestAnimationFrame(animate);
-    }
+    // ── Loop animación ────────────────────────────────────────────
+    function animate(){ drawTank(); requestAnimationFrame(animate); }
 
     updateTopicLabels();
     updateModeButtons();
+    updateSenalButtons();
     syncBoxes();
     drawTank();
     refreshChartTheme();
