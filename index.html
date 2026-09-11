@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>INTERFAZ CONTROL IOT MQTT</title>
+  <title>INTERFAZ CONTROL IOT MQTT - PENDULO</title>
   <link rel="preconnect" href="https://api.fontshare.com" />
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -90,7 +90,6 @@
       box-shadow: 0 8px 18px rgba(1,105,111,.22);
     }
     .senal-btn.active svg { opacity: 1; }
-    /* FIJA ocupa el ancho completo */
     .senal-btn-off {
       grid-column: 1 / -1;
       flex-direction: row;
@@ -106,8 +105,8 @@
   <div class="app">
     <div class="top">
       <div class="title">
-        <h1>Interfaz MQTT</h1>
-        <p>Panel web para controlar referencia, cambiar entre modos CD y DD, activar señales de referencia dinámica y visualizar nivel, error <strong>ek</strong> y control <strong>uk</strong> recibidos por MQTT sobre WebSockets.</p>
+        <h1>Interfaz MQTT - Péndulo</h1>
+        <p>Panel web para controlar referencia del carro, cambiar entre modos CD y DD, activar señales de referencia dinámica y visualizar ángulo del péndulo, ángulo del carro, error <strong>ek</strong> y control <strong>uk</strong> recibidos por MQTT sobre WebSockets.</p>
       </div>
       <button class="theme" id="themeBtn">Cambiar tema</button>
     </div>
@@ -115,8 +114,8 @@
     <div class="grid">
       <section class="card pad controls">
         <div>
-          <div class="label">Setpoint</div>
-          <div class="big" id="setpointBig">6.0 cm</div>
+          <div class="label">Setpoint (carro)</div>
+          <div class="big" id="setpointBig">0.0 °</div>
           <div class="hint">Este valor se puede publicar por MQTT al ESP32.</div>
         </div>
 
@@ -132,10 +131,10 @@
 
         <!-- Slider referencia -->
         <div class="field">
-          <label for="sp">Altura deseada / Techo señal</label>
-          <input id="sp" type="range" min="0" max="12" step="0.1" value="6.0" />
-          <div class="row"><span>0 cm</span><strong id="spLabel">6.0 cm</strong><span>12 cm</span></div>
-          <div class="hint">En modo señal dinámica, este valor es el <strong>techo</strong> (amplitud máxima). La señal barre de 0 hasta aquí.</div>
+          <label for="sp">Ángulo deseado / Techo señal (carro)</label>
+          <input id="sp" type="range" min="-180" max="180" step="1" value="0" />
+          <div class="row"><span>-180°</span><strong id="spLabel">0.0 °</strong><span>180°</span></div>
+          <div class="hint">En modo señal dinámica, este valor es el <strong>techo</strong> (amplitud máxima). La señal barre entre -techo y +techo.</div>
         </div>
 
         <!-- ══ SEÑALES DE REFERENCIA ══ -->
@@ -198,7 +197,7 @@
           </div>
           <div class="field">
             <label for="topicBase">Base de tópicos</label>
-            <input id="topicBase" type="text" value="andres/tanque2/demo01" />
+            <input id="topicBase" type="text" value="andres/pendulo/demo01" />
           </div>
           <div class="field">
             <label for="mqttUser">Usuario (opcional)</label>
@@ -218,10 +217,11 @@
 
         <!-- Métricas -->
         <div class="metrics">
-          <div class="metric"><small>Nivel medido</small><strong id="levelBox">0.0 cm</strong></div>
-          <div class="metric"><small>Error ek</small><strong id="errorBox">0.0 cm</strong></div>
-          <div class="metric"><small>Referencia activa</small><strong id="refBox">6.0 cm</strong></div>
+          <div class="metric"><small>Ángulo péndulo</small><strong id="pendBox">0.0 °</strong></div>
+          <div class="metric"><small>Ángulo carro</small><strong id="carroBox">0.0 °</strong></div>
+          <div class="metric"><small>Error ek</small><strong id="errorBox">0.0 °</strong></div>
           <div class="metric"><small>Señal uk</small><strong id="ukBox">0.0</strong></div>
+          <div class="metric"><small>Referencia activa</small><strong id="refBox">0.0 °</strong></div>
           <div class="metric"><small>Modo</small><strong id="modeBox">CD</strong></div>
           <div class="metric"><small>Señal ref</small><strong id="senalBox">FIJA</strong></div>
         </div>
@@ -230,7 +230,7 @@
       <!-- Columna central -->
       <div class="center-col">
         <section class="card pad">
-          <div class="label">Nivel y referencia activa</div>
+          <div class="label">Ángulos y referencia activa</div>
           <div class="chart-wrap"><canvas id="chart"></canvas></div>
         </section>
 
@@ -247,60 +247,79 @@
         </div>
       </div>
 
-      <!-- Tanque SVG -->
+      <!-- Visualización péndulo + carro -->
       <section class="card pad tank-wrap">
         <div class="status"><span class="dot"></span> Visualización en tiempo real</div>
-        <svg viewBox="0 0 300 400" aria-label="Tanque animado" style="max-width:260px;width:100%;margin:0 auto;">
+
+        <svg viewBox="0 0 320 360" aria-label="Péndulo y carro animados" style="max-width:280px;width:100%;margin:0 auto;">
+          <!-- Riel horizontal -->
+          <line x1="20" y1="260" x2="300" y2="260" stroke="currentColor" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+
+          <!-- Carro (rectángulo) -->
+          <rect id="carroBody" x="140" y="240" width="40" height="20" rx="6" fill="url(#carroGradient)" opacity="0.95"/>
+
+          <!-- Pivote en el carro -->
+          <circle id="pivote" cx="160" cy="240" r="5" fill="currentColor" opacity="0.9"/>
+
+          <!-- Brazo del péndulo -->
+          <line id="penduloArm" x1="160" y1="240" x2="160" y2="160" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
+
+          <!-- Masa del péndulo -->
+          <circle id="penduloMass" cx="160" cy="160" r="12" fill="url(#penduloGradient)" opacity="0.95"/>
+
+          <!-- Línea de referencia activa (ángulo del carro) -->
+          <line id="refLine" x1="20" x2="300" y1="260" y2="260"
+                stroke="#f0a15f" stroke-width="2.5" stroke-dasharray="6,4" opacity=".9"/>
+          <text id="refLineLabel" x="205" y="255" font-size="11" fill="#f0a15f" font-family="ui-monospace,monospace">ref</text>
+
+          <!-- Texto de ángulos -->
+          <text x="160" y="40" text-anchor="middle" font-size="16" font-weight="900" id="pendText" fill="currentColor">Péndulo: 0.0°</text>
+          <text x="160" y="62" text-anchor="middle" font-size="16" font-weight="900" id="carroText" fill="currentColor">Carro: 0.0°</text>
+
+          <text x="160" y="330" text-anchor="middle" font-size="16" fill="currentColor">Péndulo invertido · -180° a 180°</text>
+
           <defs>
-            <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#8de7ef" />
+            <linearGradient id="carroGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6fd2db" />
               <stop offset="100%" stop-color="#01696f" />
             </linearGradient>
-            <clipPath id="clipTank">
-              <rect x="65" y="42" width="170" height="285" rx="30" ry="30"></rect>
-            </clipPath>
+            <linearGradient id="penduloGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#8de7ef" />
+              <stop offset="100%" stop-color="#006494" />
+            </linearGradient>
           </defs>
-          <rect x="65" y="42" width="170" height="285" rx="30" ry="30" fill="none" stroke="currentColor" stroke-width="6"></rect>
-          <rect x="95" y="18" width="110" height="30" rx="12" fill="none" stroke="currentColor" stroke-width="5" opacity=".78"></rect>
-          <g clip-path="url(#clipTank)">
-            <rect id="waterBody" x="65" y="327" width="170" height="0" fill="url(#waterGradient)" opacity=".93"></rect>
-            <path id="wave" d="M65 327 Q85 319 105 327 T145 327 T185 327 T235 327 L235 340 L65 340 Z" fill="#b9f7fb" opacity=".9"></path>
-          </g>
-          <!-- Línea de referencia activa -->
-          <line id="refLine" x1="55" x2="245" y1="200" y2="200"
-                stroke="#f0a15f" stroke-width="2.5" stroke-dasharray="6,4" opacity=".9"/>
-          <text id="refLineLabel" x="248" y="204" font-size="11" fill="#f0a15f" font-family="ui-monospace,monospace">ref</text>
-          <text x="150" y="190" text-anchor="middle" font-size="38" font-weight="900" id="levelText" fill="currentColor">0.0 cm</text>
-          <text x="150" y="360" text-anchor="middle" font-size="18" fill="currentColor">Tanque 2 · 0–12 cm</text>
         </svg>
-        <div class="mini-note mono">Señal activa: <strong id="senalTankLabel">FIJA</strong> | Ref: <strong id="refTankVal">6.0 cm</strong></div>
-        <div class="mini-note mono" style="margin-top:4px">topic data: <span id="dataTopicLabel">andres/tanque2/demo01/data/state</span></div>
+
+        <div class="mini-note mono">Señal activa: <strong id="senalTankLabel">FIJA</strong> | Ref carro: <strong id="refTankVal">0.0 °</strong></div>
+        <div class="mini-note mono" style="margin-top:4px">topic data: <span id="dataTopicLabel">andres/pendulo/demo01/data/state</span></div>
       </section>
     </div>
   </div>
 
   <script>
-    const MAX = 12;
+    const MAX_ANG = 180;
     const state = {
-      setpoint: 6,
-      level: 0,
+      setpoint: 0,
+      angPend: 0,
+      angCarro: 0,
       phase: 0,
       theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
       mode: 'CD',
-      senal: 'off',          // ← NUEVO
+      senal: 'off',
       ek: 0,
       uk: 0,
-      refActiva: 6,          // ← referencia que publica el ESP32 (puede ser dinámica)
+      refActiva: 0,
       client: null,
       connected: false,
     };
 
     const $ = id => document.getElementById(id);
     const sp = $('sp'), spLabel = $('spLabel'), setpointBig = $('setpointBig');
-    const levelBox = $('levelBox'), errorBox = $('errorBox'), refBox = $('refBox');
-    const ukBox = $('ukBox'), modeBox = $('modeBox'), senalBox = $('senalBox');
-    const waterBody = $('waterBody'), wave = $('wave'), levelText = $('levelText');
+    const pendBox = $('pendBox'), carroBox = $('carroBox'), errorBox = $('errorBox');
+    const ukBox = $('ukBox'), refBox = $('refBox'), modeBox = $('modeBox'), senalBox = $('senalBox');
+    const carroBody = $('carroBody'), pivote = $('pivote'), penduloArm = $('penduloArm'), penduloMass = $('penduloMass');
     const refLine = $('refLine'), refLineLabel = $('refLineLabel');
+    const pendText = $('pendText'), carroText = $('carroText');
     const senalTankLabel = $('senalTankLabel'), refTankVal = $('refTankVal');
     const themeBtn = $('themeBtn');
     const cdBtn = $('cdBtn'), ddBtn = $('ddBtn');
@@ -317,13 +336,14 @@
     const chart = new Chart($('chart'), {
       type:'line',
       data:{datasets:[
-        {label:'Referencia activa',data:[],borderColor:'#f0a15f',pointRadius:0,borderWidth:2.5,tension:0.2,borderDash:[5,4]},
-        {label:'Nivel medido',     data:[],borderColor:'#006494',pointRadius:0,borderWidth:3,  tension:0.28}
+        {label:'Referencia activa (carro)',data:[],borderColor:'#f0a15f',pointRadius:0,borderWidth:2.5,tension:0.2,borderDash:[5,4]},
+        {label:'Ángulo carro',            data:[],borderColor:'#006494',pointRadius:0,borderWidth:3,  tension:0.28},
+        {label:'Ángulo péndulo',          data:[],borderColor:'#964219',pointRadius:0,borderWidth:2.2,tension:0.22}
       ]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
         plugins:{legend:{labels:{color:axisColor()}}},
         scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},
-                y:{min:0,max:12,ticks:{color:axisColor(),callback:v=>v+' cm'},grid:{color:gridColor()}}}}
+                y:{min:-MAX_ANG,max:MAX_ANG,ticks:{color:axisColor(),callback:v=>v+'°'},grid:{color:gridColor()}}}}
     });
 
     const errorChart = new Chart($('errorChart'), {
@@ -332,7 +352,7 @@
       options:{responsive:true,maintainAspectRatio:false,animation:false,
         plugins:{legend:{labels:{color:axisColor()}}},
         scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},
-                y:{min:-12,max:12,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
+                y:{min:-MAX_ANG,max:MAX_ANG,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
     });
 
     const controlChart = new Chart($('controlChart'), {
@@ -357,11 +377,11 @@
 
     // ── Topics ───────────────────────────────────────────────────
     function topicPaths(){
-      const base = topicBase.value.trim().replace(/\/$/, '') || 'andres/tanque2/demo01';
+      const base = topicBase.value.trim().replace(/\/$/, '') || 'andres/pendulo/demo01';
       return {
         ref:   `${base}/cmd/ref`,
         mode:  `${base}/cmd/mode`,
-        senal: `${base}/cmd/senal`,     // ← NUEVO
+        senal: `${base}/cmd/senal`,
         state: `${base}/data/state`,
         ping:  `${base}/status/ui`
       };
@@ -373,52 +393,58 @@
       dataTopicLabel.textContent = t.state;
     }
 
-    function clamp(v, min=0, max=MAX){ return Math.max(min, Math.min(max, Number(v)||0)); }
+    function clampAng(v, min=-MAX_ANG, max=MAX_ANG){ return Math.max(min, Math.min(max, Number(v)||0)); }
 
     // ── Sincronizar métricas ─────────────────────────────────────
     function syncBoxes(){
-      state.setpoint = clamp(sp.value);
-      spLabel.textContent      = state.setpoint.toFixed(1)+' cm';
-      setpointBig.textContent  = state.setpoint.toFixed(1)+' cm';
-      // refBox muestra la referencia ACTIVA que viene del ESP32
-      refBox.textContent       = state.refActiva.toFixed(2)+' cm';
-      levelBox.textContent     = state.level.toFixed(2)+' cm';
-      errorBox.textContent     = state.ek.toFixed(3)+' cm';
+      state.setpoint = clampAng(sp.value);
+      spLabel.textContent      = state.setpoint.toFixed(1)+' °';
+      setpointBig.textContent  = state.setpoint.toFixed(1)+' °';
+      refBox.textContent       = state.refActiva.toFixed(2)+' °';
+      pendBox.textContent      = state.angPend.toFixed(2)+' °';
+      carroBox.textContent     = state.angCarro.toFixed(2)+' °';
+      errorBox.textContent     = state.ek.toFixed(3)+' °';
       ukBox.textContent        = state.uk.toFixed(2);
       modeBox.textContent      = state.mode;
       senalBox.textContent     = state.senal.toUpperCase();
       senalTankLabel.textContent = state.senal.toUpperCase();
-      refTankVal.textContent   = state.refActiva.toFixed(2)+' cm';
-      levelText.textContent    = state.level.toFixed(1)+' cm';
+      refTankVal.textContent   = state.refActiva.toFixed(2)+' °';
+      pendText.textContent     = `Péndulo: ${state.angPend.toFixed(1)}°`;
+      carroText.textContent    = `Carro: ${state.angCarro.toFixed(1)}°`;
     }
 
-    // ── Tanque SVG ───────────────────────────────────────────────
-    function drawTank(){
-      const pct  = state.level / MAX;
-      const top  = 42, h = 285;
-      const y    = top + h - pct*h;
-      waterBody.setAttribute('y', y.toFixed(2));
-      waterBody.setAttribute('height', (pct*h).toFixed(2));
+    // ── Visualización péndulo + carro ───────────────────────────
+    function drawPendulo(){
+      // Mapeo ángulo carro a posición X del carro en el riel (aprox)
+      // -180° -> x=40, 0° -> x=160, 180° -> x=280
+      const carroX = 160 + (state.angCarro / MAX_ANG) * 120;
+      carroBody.setAttribute('x', (carroX - 20).toFixed(2));
+      pivote.setAttribute('cx', carroX.toFixed(2));
+      pivote.setAttribute('cy', '240');
 
-      // ola
-      state.phase += 0.25;
-      const left=65, right=235, width=right-left, amp=5;
-      let d = `M ${left} ${y.toFixed(2)} `;
-      for(let i=0;i<6;i++){
-        const x1=left+width/6*i, x2=left+width/6*(i+1), cx=(x1+x2)/2;
-        const cy=y+Math.sin(state.phase+i)*amp;
-        d+=`Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${x2.toFixed(2)} ${y.toFixed(2)} `;
-      }
-      d+=`L ${right} 340 L ${left} 340 Z`;
-      wave.setAttribute('d', d);
+      // Brazo del péndulo: ángulo 0 = vertical hacia arriba
+      const L = 80; // longitud del brazo en px
+      const angRad = (-state.angPend) * Math.PI / 180; // negativo porque Y crece hacia abajo
+      const endX = carroX + L * Math.sin(angRad);
+      const endY = 240 + L * Math.cos(angRad);
 
-      // Línea de referencia activa
-      const refPct = state.refActiva / MAX;
-      const refY   = (top + h - refPct*h).toFixed(2);
-      refLine.setAttribute('y1', refY);
-      refLine.setAttribute('y2', refY);
-      refLineLabel.setAttribute('y', (parseFloat(refY)+4).toFixed(2));
-      refLineLabel.textContent = state.refActiva.toFixed(1)+' cm';
+      penduloArm.setAttribute('x1', carroX.toFixed(2));
+      penduloArm.setAttribute('y1', '240');
+      penduloArm.setAttribute('x2', endX.toFixed(2));
+      penduloArm.setAttribute('y2', endY.toFixed(2));
+
+      penduloMass.setAttribute('cx', endX.toFixed(2));
+      penduloMass.setAttribute('cy', endY.toFixed(2));
+
+      // Línea de referencia activa (ángulo del carro)
+      const refX = 160 + (state.refActiva / MAX_ANG) * 120;
+      refLine.setAttribute('x1', refX.toFixed(2));
+      refLine.setAttribute('x2', refX.toFixed(2));
+      refLine.setAttribute('y1', '240');
+      refLine.setAttribute('y2', '280');
+      refLineLabel.setAttribute('x', (refX + 5).toFixed(2));
+      refLineLabel.setAttribute('y', '275');
+      refLineLabel.textContent = state.refActiva.toFixed(1)+'°';
     }
 
     // ── Gráficas ─────────────────────────────────────────────────
@@ -428,8 +454,9 @@
       dataset.forEach((p,i)=>p.x=i);
     }
     function pushCharts(){
-      pushToDataset(chart.data.datasets[0].data, state.refActiva);   // referencia activa (dinámica)
-      pushToDataset(chart.data.datasets[1].data, state.level);
+      pushToDataset(chart.data.datasets[0].data, state.refActiva);
+      pushToDataset(chart.data.datasets[1].data, state.angCarro);
+      pushToDataset(chart.data.datasets[2].data, state.angPend);
       pushToDataset(errorChart.data.datasets[0].data, state.ek);
       pushToDataset(controlChart.data.datasets[0].data, state.uk);
       chart.update('none'); errorChart.update('none'); controlChart.update('none');
@@ -459,7 +486,6 @@
       state.senal = s;
       updateSenalButtons();
       syncBoxes();
-      // Publicar al ESP32
       const t = topicPaths();
       if(state.client && state.connected){
         state.client.publish(t.senal, s);
@@ -511,7 +537,6 @@
         state.client.subscribe(t.state);
         publishRef();
         publishMode();
-        // Sincronizar señal activa al conectar
         state.client.publish(t.senal, state.senal);
         publishJSON(t.ping, { ui:'online', ts:Date.now() });
       });
@@ -524,20 +549,19 @@
         if(topic!==t.state) return;
         try {
           const d = JSON.parse(payload.toString());
-          if(typeof d.nivel  !== 'undefined') state.level     = clamp(d.nivel);
-          if(typeof d.ek     !== 'undefined') state.ek        = Number(d.ek)||0;
-          if(typeof d.uk     !== 'undefined') state.uk        = Number(d.uk)||0;
-          // ref: viene del ESP32 como referencia activa (dinámica si hay señal)
-          if(typeof d.ref    !== 'undefined') state.refActiva = clamp(d.ref);
-          if(typeof d.modo   === 'string')    state.mode      = d.modo.toUpperCase()==='DD' ? 'DD' : 'CD';
-          // Sincronizar botón señal si el ESP32 reporta cambio
-          if(typeof d.senal  === 'string' && SENALES.includes(d.senal)){
+          if(typeof d.angPend  !== 'undefined') state.angPend   = clampAng(d.angPend);
+          if(typeof d.angCarro !== 'undefined') state.angCarro  = clampAng(d.angCarro);
+          if(typeof d.ek       !== 'undefined') state.ek        = Number(d.ek)||0;
+          if(typeof d.uk       !== 'undefined') state.uk        = Number(d.uk)||0;
+          if(typeof d.ref      !== 'undefined') state.refActiva = clampAng(d.ref);
+          if(typeof d.modo     === 'string')    state.mode      = d.modo.toUpperCase()==='DD' ? 'DD' : 'CD';
+          if(typeof d.senal    === 'string' && SENALES.includes(d.senal)){
             state.senal = d.senal;
             updateSenalButtons();
           }
           updateModeButtons();
           syncBoxes();
-          drawTank();
+          drawPendulo();
           pushCharts();
         } catch(e){ /* payload inválido */ }
       });
@@ -556,7 +580,7 @@
     }
 
     // ── Eventos ───────────────────────────────────────────────────
-    sp.addEventListener('input',()=>{ state.setpoint=clamp(sp.value); syncBoxes(); publishRef(); });
+    sp.addEventListener('input',()=>{ state.setpoint=clampAng(sp.value); syncBoxes(); publishRef(); });
 
     cdBtn.addEventListener('click',()=>{ state.mode='CD'; updateModeButtons(); syncBoxes(); publishMode(); });
     ddBtn.addEventListener('click',()=>{ state.mode='DD'; updateModeButtons(); syncBoxes(); publishMode(); });
@@ -573,13 +597,13 @@
     });
 
     // ── Loop animación ────────────────────────────────────────────
-    function animate(){ drawTank(); requestAnimationFrame(animate); }
+    function animate(){ drawPendulo(); requestAnimationFrame(animate); }
 
     updateTopicLabels();
     updateModeButtons();
     updateSenalButtons();
     syncBoxes();
-    drawTank();
+    drawPendulo();
     refreshChartTheme();
     animate();
   </script>
