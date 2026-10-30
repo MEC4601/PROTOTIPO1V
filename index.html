@@ -106,7 +106,7 @@
     <div class="top">
       <div class="title">
         <h1>Interfaz MQTT - Péndulo</h1>
-        <p>Panel web para controlar referencia del carro, cambiar entre modos CD y DD, activar señales de referencia dinámica y visualizar ángulo del péndulo, ángulo del carro, error <strong>ek</strong> y control <strong>uk</strong> recibidos por MQTT sobre WebSockets.</p>
+        <p>Panel web para controlar referencia del carro, cambiar entre modos CD y DD, activar señales de referencia dinámica y visualizar ángulo del péndulo, ángulo del carro, error <strong>ek</strong> y control <strong>uk</strong> (en voltios, ±12 V) recibidos por MQTT sobre WebSockets.</p>
       </div>
       <button class="theme" id="themeBtn">Cambiar tema</button>
     </div>
@@ -145,7 +145,6 @@
 
             <!-- FIJA (off) — fila completa -->
             <button class="senal-btn senal-btn-off active" id="sBtn-off" onclick="setSenal('off')">
-              <!-- línea horizontal -->
               <svg width="32" height="20" viewBox="0 0 32 20" fill="none">
                 <line x1="0" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
@@ -220,7 +219,7 @@
           <div class="metric"><small>Ángulo péndulo</small><strong id="pendBox">0.0 °</strong></div>
           <div class="metric"><small>Ángulo carro</small><strong id="carroBox">0.0 °</strong></div>
           <div class="metric"><small>Error ek</small><strong id="errorBox">0.0 °</strong></div>
-          <div class="metric"><small>Señal uk</small><strong id="ukBox">0.0</strong></div>
+          <div class="metric"><small>Señal uk</small><strong id="ukBox">0.00 V</strong></div>
           <div class="metric"><small>Referencia activa</small><strong id="refBox">0.0 °</strong></div>
           <div class="metric"><small>Modo</small><strong id="modeBox">CD</strong></div>
           <div class="metric"><small>Señal ref</small><strong id="senalBox">FIJA</strong></div>
@@ -241,7 +240,7 @@
           </section>
 
           <section class="card pad">
-            <div class="label">Gráfica de control uk</div>
+            <div class="label">Gráfica de control uk (V)</div>
             <div class="chart-wrap small"><canvas id="controlChart"></canvas></div>
           </section>
         </div>
@@ -298,6 +297,16 @@
 
   <script>
     const MAX_ANG = 180;
+
+    // ── Configuración de uk (voltaje de control) ────────────────
+    // UK_MAX: voltaje máximo de salida (la gráfica va de -UK_MAX a +UK_MAX)
+    // UK_FORMATO: qué manda el ESP32 en el campo "uk"
+    //   'volts'     -> ya viene en voltios (-12 a 12)
+    //   'pwm_signo' -> PWM con signo (-255 a 255)
+    //   'pwm_0_255' -> PWM 0 a 255 donde 127.5 equivale a 0 V
+    const UK_MAX = 12;
+    const UK_FORMATO = 'volts';
+
     const state = {
       setpoint: 0,
       angPend: 0,
@@ -357,11 +366,11 @@
 
     const controlChart = new Chart($('controlChart'), {
       type:'line',
-      data:{datasets:[{label:'uk',data:[],borderColor:'#437a22',pointRadius:0,borderWidth:3,tension:0.18}]},
+      data:{datasets:[{label:'uk (V)',data:[],borderColor:'#437a22',pointRadius:0,borderWidth:3,tension:0.18}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
         plugins:{legend:{labels:{color:axisColor()}}},
         scales:{x:{type:'linear',min:0,max:79,ticks:{color:axisColor()},grid:{color:gridColor()}},
-                y:{min:0,max:255,ticks:{color:axisColor()},grid:{color:gridColor()}}}}
+                y:{min:-UK_MAX,max:UK_MAX,ticks:{color:axisColor(),callback:v=>v+' V'},grid:{color:gridColor()}}}}
     });
 
     function refreshChartTheme() {
@@ -395,6 +404,14 @@
 
     function clampAng(v, min=-MAX_ANG, max=MAX_ANG){ return Math.max(min, Math.min(max, Number(v)||0)); }
 
+    // Convierte el valor recibido en "uk" a voltios según UK_FORMATO
+    function ukToVolts(raw){
+      let u = Number(raw) || 0;
+      if(UK_FORMATO === 'pwm_signo')      u = u * UK_MAX / 255;
+      else if(UK_FORMATO === 'pwm_0_255') u = (u - 127.5) / 127.5 * UK_MAX;
+      return clampAng(u, -UK_MAX, UK_MAX);
+    }
+
     // ── Sincronizar métricas ─────────────────────────────────────
     function syncBoxes(){
       state.setpoint = clampAng(sp.value);
@@ -404,7 +421,7 @@
       pendBox.textContent      = state.angPend.toFixed(2)+' °';
       carroBox.textContent     = state.angCarro.toFixed(2)+' °';
       errorBox.textContent     = state.ek.toFixed(3)+' °';
-      ukBox.textContent        = state.uk.toFixed(2);
+      ukBox.textContent        = state.uk.toFixed(2)+' V';
       modeBox.textContent      = state.mode;
       senalBox.textContent     = state.senal.toUpperCase();
       senalTankLabel.textContent = state.senal.toUpperCase();
@@ -552,7 +569,7 @@
           if(typeof d.angPend  !== 'undefined') state.angPend   = clampAng(d.angPend);
           if(typeof d.angCarro !== 'undefined') state.angCarro  = clampAng(d.angCarro);
           if(typeof d.ek       !== 'undefined') state.ek        = Number(d.ek)||0;
-          if(typeof d.uk       !== 'undefined') state.uk        = Number(d.uk)||0;
+          if(typeof d.uk       !== 'undefined') state.uk        = ukToVolts(d.uk);
           if(typeof d.ref      !== 'undefined') state.refActiva = clampAng(d.ref);
           if(typeof d.modo     === 'string')    state.mode      = d.modo.toUpperCase()==='DD' ? 'DD' : 'CD';
           if(typeof d.senal    === 'string' && SENALES.includes(d.senal)){
